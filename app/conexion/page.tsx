@@ -304,20 +304,22 @@ function Cuadre() {
   const [choque, setChoque] = useState<FilaCuadre | null>(null);
 
   const filas = useMemo(() => (db ? filasCuadre(db) : []), [db]);
-  const lista = useMemo(
-    () =>
-      filas.filter((f) => {
-        const problema = f.estado !== "ok" && !f.resuelta;
-        if (filtro === "problemas" && !problema) return false;
-        if (filtro === "cuadradas" && problema) return false;
-        if (q) {
-          const p = db?.props.find((x) => x.id === f.prop)?.nombre ?? "";
-          if (!plano(`${f.titulo} ${f.detalle} ${p}`).includes(plano(q))) return false;
-        }
-        return true;
-      }),
-    [filas, filtro, q, db],
-  );
+  const lista = useMemo(() => {
+    const l = filas.filter((f) => {
+      const problema = f.estado !== "ok" && !f.resuelta;
+      if (filtro === "problemas" && !problema) return false;
+      if (filtro === "cuadradas" && problema) return false;
+      if (q) {
+        const p = db?.props.find((x) => x.id === f.prop)?.nombre ?? "";
+        if (!plano(`${f.titulo} ${f.detalle} ${p}`).includes(plano(q))) return false;
+      }
+      return true;
+    });
+    // lo urgente primero: dos reservas en una noche, después las noches que volvieron a la venta
+    if (filtro !== "problemas") return l;
+    const peso: Record<EstadoFila, number> = { choque: 0, reabierta: 1, "otra-fila": 2, "sin-importar": 3, ok: 4 };
+    return [...l].sort((x, y) => peso[x.estado] - peso[y.estado] || (x.inicio < y.inicio ? -1 : x.inicio > y.inicio ? 1 : 0));
+  }, [filas, filtro, q, db]);
   if (!db) return null;
   const hechas = filas.filter((f) => f.estado === "ok" || f.resuelta).length;
   const problemas = filas.length - hechas;
